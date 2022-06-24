@@ -8,7 +8,7 @@ configUi:
   customElement: entando-lapam-metopack-config
   resources:
     - ent-lapam-metopack/static/js/2.573a9ab1.chunk.js
-    - ent-lapam-metopack/static/js/main.225de957.chunk.js
+    - ent-lapam-metopack/static/js/main.b6e80f51.chunk.js
     - ent-lapam-metopack/static/js/runtime-main.69077a03.js
 
 # entando_resource_injection_point
