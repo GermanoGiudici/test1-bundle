@@ -6,6 +6,66 @@ const ATTRIBUTES = {
 };
 
 
+const permissionResults = {
+    UNAUTHORIZED: "UNAUTHORIZED",
+    UNAUTHENTICATED: "UNAUTHENTICATED",
+    AUTHOK: "AUTHOK"
+}
+
+
+function authRouter(requestedModule, jwtTokenParsed, unauthorizedAction, unauthenticatedAction, authorizedAction) {
+    const checkResult = checkPermissions(requestedModule, jwtTokenParsed)
+    switch (checkResult.result) {
+        case permissionResults.UNAUTHORIZED:
+            unauthorizedAction()
+            break
+        case permissionResults.UNAUTHENTICATED:
+            unauthenticatedAction()
+            break
+        default:
+            authorizedAction(checkResult.runner)
+    }
+}
+
+
+function buildRunner(requestedModule, metopackConfig) {
+    const connectionTokens = metopackConfig.connection.split(":")
+
+
+    return {
+        host: connectionTokens[0],
+        port: connectionTokens[1],
+        utente: metopackConfig.utente,
+        prog: metopackConfig.prog,
+        titolo: "Metopack",
+        modulo: requestedModule
+    }
+}
+
+function checkPermissions(requestedModule, jwtTokenParsed) {
+    if (!jwtTokenParsed) return {result: permissionResults.UNAUTHENTICATED}
+    try {
+        var allowedModules = jwtTokenParsed.lapam.metopackcloud.modules
+    } catch (e) {
+        console.error(e)
+        return {result: permissionResults.UNAUTHENTICATED}
+    }
+
+    if (!allowedModules.includes(requestedModule)) {
+        return {result: permissionResults.UNAUTHORIZED}
+    }
+
+    try {
+        var runner = buildRunner(requestedModule, jwtTokenParsed.lapam.metopackcloud)
+    } catch (e) {
+        console.error(e)
+    }
+
+    return {result: permissionResults.AUTHOK, runner}
+
+}
+
+
 class EntandoLapamMetopack extends HTMLElement {
 
     static get observedAttributes() {
@@ -17,33 +77,54 @@ class EntandoLapamMetopack extends HTMLElement {
             throw new Error(`Untracked changed attribute: ${name}`);
         }
         if (this.mountPoint && newValue !== oldValue) {
-            this.render();
+            this.authRouting();
         }
     }
 
     connectedCallback() {
-        this.render()
+        //listen to keycloak events to be sure we have the token, before rendering the element body
+        window.addEventListener('keycloak', (e) => {
+            if (e.detail.eventType === "onReady") {
+                this.authRouting()
+            }
+        })
+
     }
 
-    render() {
-        const runner = {
-            host: "34.159.252.151",
-            port: 61500,
-            utente: "117513",
-            prog: 1,
-            titolo: "Metopack"
+    authRouting() {
+        const keycloak = window.entando.keycloak
+
+        const requestedModule = this.getAttribute(ATTRIBUTES.modulo)
+        const unauthorizedAction = () => {
+            console.log("unauthorizedAction")
+            const text = document.createElement("div");
+            text.innerHTML = "Non sei autorizzato"
+            this.appendChild(text)
+        }
+        const unauthenticatedAction = () => {
+            console.log("unauthenticatedAction")
+            keycloak.login()
+        }
+        const authorizedAction = (runner) => {
+            this.render(runner)
         }
 
-        runner.modulo = this.getAttribute(ATTRIBUTES.modulo);
+        authRouter(requestedModule, keycloak.tokenParsed, unauthorizedAction, unauthenticatedAction, authorizedAction)
+    }
 
-
+    render(runner) {
         const ele = document.createElement("tkrad-digital")
+        const loader = document.createElement("div")
+        loader.innerHTML = "inserire qui il loader"
+        ele.appendChild(loader)
         ele.setModule(runner, (type, event) => {
-            if ( type == "START" ) {
+            if (type == "OPEN") {
+                loader.remove()
+            } else if (type == "START") {
                 ele.innerHTML = "Connessione non realizzabile"
-            } else if ( type == "ERROR" ) {
+            } else if (type == "ERROR") {
                 ele.innerHTML = "Connessione momentaneamente non disponibile"
-            } else if ( type == "CLOSE" ) {
+            } else if (type == "CLOSE") {
                 ele.innerHTML = "Connessione terminata"
             }
         })
