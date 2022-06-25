@@ -48,7 +48,7 @@ function checkPermissions(requestedModule, jwtTokenParsed) {
         var allowedModules = jwtTokenParsed.lapam.metopackcloud.modules
     } catch (e) {
         console.error(e)
-        return {result: permissionResults.UNAUTHENTICATED}
+        return {result: permissionResults.UNAUTHORIZED}
     }
 
     if (!allowedModules.includes(requestedModule)) {
