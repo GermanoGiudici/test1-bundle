@@ -114,8 +114,8 @@ class EntandoLapamMetopack extends HTMLElement {
 
     render(runner) {
         const ele = document.createElement("tkrad-digital")
-        const loader = document.createElement("div")
-        loader.innerHTML = "inserire qui il loader"
+        const loader = document.createElement("tkrad-progress")
+        loader.buildObject()
         ele.appendChild(loader)
         ele.setModule(runner, (type, event) => {
             if (type == "OPEN") {
